@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+// bin/zellij-claude — CLI for managing Claude Code sessions in Zellij
+
+import * as zellij from '../src/zellij.js';
+import { parseCommand, execute } from '../src/dispatch.js';
+
+const args = process.argv.slice(2);
+const sub = args[0];
+
+if (!sub || sub === '--help' || sub === '-h') {
+  console.log(`zellij-claude — manage multiple Claude Code sessions in Zellij
+
+Commands:
+  ls                          List active sessions
+  last @<name> [count]        Show last response(s) from a session
+  send @<name> <message>      Send a message to a session
+  open [--name @<name>] <path> [-- flags]  Open new session
+  goto @<name>                Switch to a session tab
+  rename @<old> @<new>        Rename a session
+  mcp                         Start MCP server (stdio)
+  install-hooks               Install Telegram hooks into Claude Code settings`);
+  process.exit(0);
+}
+
+if (sub === 'mcp') {
+  await import('../mcp/server.js');
+} else if (sub === 'install-hooks') {
+  const { installHooks } = await import('../hooks/install.js');
+  installHooks();
+} else {
+  // Map CLI args to dispatch command format
+  const input = sub === 'send'
+    ? `@${args[1]?.replace(/^@/, '')} ${args.slice(2).join(' ')}`
+    : `/${args.join(' ')}`;
+
+  const cmd = parseCommand(input);
+  if (cmd.type === 'unknown') {
+    console.error(`Unknown command: ${sub}. Run 'zellij-claude --help' for usage.`);
+    process.exit(1);
+  }
+  const result = await execute(cmd, { zellij });
+  console.log(result);
+}
