@@ -16,13 +16,13 @@ export function installHooks() {
 
   const permHook = {
     type: 'command',
-    command: `node "${join(__dirname, 'permission-notify.js')}"`,
+    command: `node "${join(__dirname, 'permission-notify.cjs')}"`,
     async: true,
   };
 
   const stopHook = {
     type: 'command',
-    command: `node "${join(__dirname, 'session-stop.js')}"`,
+    command: `node "${join(__dirname, 'session-stop.cjs')}"`,
     async: true,
   };
 

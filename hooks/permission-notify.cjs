@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { send, sendWithButtons, getKürzel } = require('./telegram-helper.js');
+const { send, sendWithButtons, getKürzel } = require('./telegram-helper.cjs');
 const { readFileSync } = require('fs');
 
 const MAIN_SESSION = process.env.ZELLIJ_CLAUDE_MAIN || 'main';

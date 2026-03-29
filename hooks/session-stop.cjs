@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const { execFileSync } = require('child_process');
-const { send, getKürzel } = require('./telegram-helper.js');
+const { send, getKürzel } = require('./telegram-helper.cjs');
 
 function getLastResponse(kürzel) {
   try {
