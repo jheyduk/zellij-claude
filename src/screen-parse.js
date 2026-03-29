@@ -5,7 +5,8 @@ const SPINNER = /^\s*[·⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s/;
 const HOOK_STATUS = /running\s+(stop|start)\s+hooks/i;
 const THINKING = /^\s*thinking\s*$/i;
 const EMPTY_PROMPT = /^❯\s*$/;
-const RESPONSE_START = /^⏺/;
+const RESPONSE_START = /^[⏺✻]/;
+const WORKED_FOR = /^✻\s+Worked for/;
 const PROMPT_START = /^❯\s+\S/;
 
 function isNoise(line) {
@@ -14,12 +15,13 @@ function isNoise(line) {
     || UI_CHROME.test(line)
     || SPINNER.test(line)
     || HOOK_STATUS.test(line)
-    || THINKING.test(line);
+    || THINKING.test(line)
+    || WORKED_FOR.test(line);
 }
 
 function cleanBlock(lines) {
   return lines
-    .map(l => l.replace(/^⏺\s*/, '').replace(/^\s{2}⎿\s{1,2}/, '  ').trimStart())
+    .map(l => l.replace(/^[⏺✻]\s*/, '').replace(/^\s{2}⎿\s{1,2}/, '  ').trimStart())
     .join('\n')
     .trim();
 }
@@ -43,10 +45,33 @@ function findResponseBlocks(lines) {
   return blocks;
 }
 
+function extractTrailingText(lines) {
+  // Fallback: extract text before the last ❯ prompt, skipping noise
+  let end = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (EMPTY_PROMPT.test(lines[i]) || PROMPT_START.test(lines[i])) { end = i; break; }
+  }
+  const content = [];
+  for (let i = end - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (isNoise(line) || !line.trim()) {
+      if (content.length > 0) break;
+      continue;
+    }
+    content.unshift(line);
+  }
+  const text = content.map(l => l.trimStart()).join('\n').trim();
+  return text || null;
+}
+
 export function extractResponses(screenText, count = 1) {
   if (!screenText) return null;
-  const blocks = findResponseBlocks(screenText.split('\n'));
-  if (blocks.length === 0) return null;
+  const lines = screenText.split('\n');
+  const blocks = findResponseBlocks(lines);
+  if (blocks.length === 0) {
+    const trailing = extractTrailingText(lines);
+    return trailing;
+  }
   const selected = blocks.slice(-count);
   return selected.map(b => b.text).join('\n\n---\n\n');
 }

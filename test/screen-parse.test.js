@@ -77,11 +77,11 @@ test('extractLastResponse - filters thinking', () => {
   assert.equal(result, 'Response text\nmore content');
 });
 
-test('extractLastResponse - returns null when no response marker', () => {
+test('extractLastResponse - falls back to trailing text when no response marker', () => {
   const screen = `Some terminal output
 ❯ user input`;
   const result = extractLastResponse(screen);
-  assert.equal(result, null);
+  assert.equal(result, 'Some terminal output');
 });
 
 test('extractLastResponse - returns null for empty input', () => {
@@ -167,11 +167,11 @@ test('extractResponses - count exceeds available', () => {
   assert.equal(result, 'Only response');
 });
 
-test('extractResponses - null for terminal output only', () => {
+test('extractResponses - falls back to trailing text for non-Claude output', () => {
   const screen = `terminal output
 prompt $`;
   const result = extractResponses(screen);
-  assert.equal(result, null);
+  assert.equal(result, 'terminal output\nprompt $');
 });
 
 test('extractResponses - null for empty input', () => {

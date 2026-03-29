@@ -158,13 +158,13 @@ describe('execute – last', () => {
     assert.equal(result, 'Answer.');
   });
 
-  it('falls back to raw lines when no ⏺ block found', async () => {
+  it('falls back to trailing text when no ⏺ block found', async () => {
     const zellij = {
       listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
       dumpScreen: () => 'line1\nline2\nline3',
     };
     const result = await execute({ type: 'last', kürzel: 'foo', lines: 2 }, { zellij });
-    assert.equal(result, 'line2\nline3');
+    assert.equal(result, 'line1\nline2\nline3');
   });
 
   it('returns no-output message when screen is empty', async () => {
