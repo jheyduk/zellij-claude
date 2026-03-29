@@ -109,9 +109,10 @@ test('writeChars navigates to tab and writes text with newline', () => {
 
   zellij.writeChars('myTab', 'hello world');
 
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.deepEqual(calls[0], ['go-to-tab-name', 'myTab']);
-  assert.deepEqual(calls[1], ['write-chars', 'hello world\n']);
+  assert.deepEqual(calls[1], ['write-chars', 'hello world']);
+  assert.deepEqual(calls[2], ['write', '13']);
 });
 
 test('dumpScreen navigates to tab and returns all screen when short', () => {

@@ -35,7 +35,8 @@ export function renameTab(tabId, newName) {
 
 export function writeChars(tabName, text) {
   _exec.run(['go-to-tab-name', tabName]);
-  _exec.run(['write-chars', text + '\n']);
+  _exec.run(['write-chars', text]);
+  _exec.run(['write', '13']);
 }
 
 export function dumpScreen(tabName, lines = 5) {
