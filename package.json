@@ -1,0 +1,22 @@
+{
+  "name": "zellij-claude",
+  "version": "0.1.0",
+  "description": "Manage multiple Claude Code sessions in Zellij tabs — CLI, MCP Server, and Telegram hooks",
+  "type": "module",
+  "bin": {
+    "zellij-claude": "./bin/zellij-claude"
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "mcp": "node mcp/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["claude", "claude-code", "zellij", "mcp", "terminal", "multiplexer", "ai"],
+  "license": "MIT",
+  "files": ["src/", "hooks/", "mcp/", "bin/"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
