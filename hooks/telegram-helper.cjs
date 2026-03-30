@@ -30,9 +30,7 @@ function getKürzel(sessionId) {
       return readFileSync(`/tmp/zellij-claude-tab-${sessionId}`, 'utf8').trim();
     } catch {}
   }
-  const cwd = process.cwd();
-  const segments = cwd.replace(/\/+$/, '').split('/');
-  return segments[segments.length - 1] || null;
+  return null;
 }
 
 function apiCall(method, params) {

@@ -6,9 +6,7 @@ const MAIN_SESSION = process.env.ZELLIJ_CLAUDE_MAIN || 'main';
 
 let input = '';
 const timeout = setTimeout(() => {
-  const kürzel = getKürzel(null);
-  const label = kürzel ? `@${kürzel}` : 'Claude';
-  sendNotification(label, 'Permission required', null);
+  // No session_id available, skip (not a zellij-claude session)
   process.exit(0);
 }, 3000);
 
@@ -60,12 +58,12 @@ process.stdin.on('end', () => {
   try {
     const data = JSON.parse(input || '{}');
     const kürzel = getKürzel(data.session_id);
-    const label = kürzel ? `@${kürzel}` : 'Claude';
+    if (!kürzel) { process.exit(0); } // Not a zellij-claude session
     const message = data.message || 'Permission required';
     const toolInfo = loadToolDetails(data.session_id);
-    sendNotification(label, message, toolInfo);
+    sendNotification(`@${kürzel}`, message, toolInfo);
   } catch {
-    send('🔐 Claude is waiting for permission!');
+    // No valid session data, skip
   }
   process.exit(0);
 });

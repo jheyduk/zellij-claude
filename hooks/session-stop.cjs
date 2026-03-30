@@ -12,12 +12,12 @@ function getLastResponse(kürzel) {
 }
 
 function notify(kürzel) {
-  const label = kürzel ? `@${kürzel}` : 'Session';
-  const response = kürzel ? getLastResponse(kürzel) : null;
+  if (!kürzel) return; // Not a zellij-claude session, skip
+  const response = getLastResponse(kürzel);
   if (response) {
-    send(`✅ ${label} finished!\n\n${response}`);
+    send(`✅ @${kürzel} finished!\n\n${response}`);
   } else {
-    send(`✅ ${label} finished!`);
+    send(`✅ @${kürzel} finished!`);
   }
 }
 

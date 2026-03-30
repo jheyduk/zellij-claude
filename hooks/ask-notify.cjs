@@ -11,10 +11,10 @@ process.stdin.on('end', () => {
   clearTimeout(timeout);
   try {
     const data = JSON.parse(input || '{}');
-    const question = data.tool_input?.question || 'Needs your input!';
     const kürzel = getKürzel(data.session_id);
-    const label = kürzel ? `@${kürzel}` : 'Claude';
-    send(`🤖 ${label} asks: ${question}`);
+    if (!kürzel) { process.exit(0); } // Not a zellij-claude session
+    const question = data.tool_input?.question || 'Needs your input!';
+    send(`🤖 @${kürzel} asks: ${question}`);
   } catch { /* silent */ }
   process.exit(0);
 });
