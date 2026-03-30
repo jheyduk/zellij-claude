@@ -29,9 +29,22 @@ if (sub === 'mcp') {
   installHooks();
 } else {
   // Map CLI args to dispatch command format
-  const input = sub === 'send'
-    ? `@${args[1]?.replace(/^@/, '')} ${args.slice(2).join(' ')}`
-    : `/${args.join(' ')}`;
+  let input;
+  if (sub === 'send') {
+    input = `@${args[1]?.replace(/^@/, '')} ${args.slice(2).join(' ')}`;
+  } else if (sub === 'open') {
+    // Map: open [--name @X] <path> [-- flags] → /open [@X] <path> [-- flags]
+    const rest = args.slice(1);
+    let name = null;
+    let filtered = [];
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '--name' && rest[i + 1]) { name = rest[++i].replace(/^@/, ''); }
+      else { filtered.push(rest[i]); }
+    }
+    input = name ? `/open @${name} ${filtered.join(' ')}` : `/open ${filtered.join(' ')}`;
+  } else {
+    input = `/${args.join(' ')}`;
+  }
 
   const cmd = parseCommand(input);
   if (cmd.type === 'unknown') {
