@@ -1,6 +1,24 @@
 import { parseTabs, findTab, deriveKürzel, resolveKürzel } from './registry.js';
 import { sanitize } from './sanitize.js';
 import { extractResponses } from './screen-parse.js';
+import { resolveWorkspace } from './workspace.js';
+
+function deriveStatus(pane) {
+  if (!pane) return 'unknown';
+  const cmd = pane.pane_command || '';
+  const title = pane.title || '';
+
+  // Not a Claude session — show the process name
+  if (!cmd.includes('claude')) {
+    const proc = cmd.split('/').pop().split(/\s/)[0] || title.split(/\s/)[0] || 'shell';
+    return `shell (${proc})`;
+  }
+
+  // Claude session status from title
+  if (/⠋|⠙|⠹|⠸|⠼|⠴|⠦|⠧|⠇|⠏|⠐/.test(title)) return 'working';
+  if (/\bpermission\b|\bAllow\b|\bDeny\b/i.test(title) || /\?\s*$/.test(title)) return 'waiting';
+  return 'ready';
+}
 
 export async function execute(cmd, { zellij }) {
   const tabs = zellij.listTabs();
@@ -9,24 +27,41 @@ export async function execute(cmd, { zellij }) {
   switch (cmd.type) {
     case 'ls': {
       if (sessions.length === 0) return 'No sessions found.';
+      const panes = typeof zellij.listPanes === 'function' ? zellij.listPanes() : [];
       return sessions
-        .map(s => `@${s.kürzel}${s.active ? ' (active)' : ''}`)
+        .map(s => {
+          const pane = panes.find(p => p.tab_name === s.name && !p.is_plugin && !p.is_suppressed);
+          const status = deriveStatus(pane);
+          const active = s.active ? ' (active)' : '';
+          return `@${s.kürzel}  ${status}${active}`;
+        })
         .join('\n');
     }
 
     case 'open': {
       let kürzel;
+      let path = cmd.path;
+
+      // /open @kürzel without path — try to find a matching workspace
+      if (cmd.kürzel && !path) {
+        const resolved = resolveWorkspace(cmd.kürzel);
+        if (!resolved) {
+          return `No workspace found for @${cmd.kürzel}. Provide a path: open @${cmd.kürzel} <path>`;
+        }
+        path = resolved;
+      }
+
       if (cmd.kürzel) {
         if (findTab(cmd.kürzel, sessions)) {
           return `Session @${cmd.kürzel} already running. Use \`goto @${cmd.kürzel}\` to switch.`;
         }
         kürzel = cmd.kürzel;
       } else {
-        kürzel = resolveKürzel(deriveKürzel(cmd.path), sessions);
+        kürzel = resolveKürzel(deriveKürzel(path), sessions);
       }
       const name = `@${kürzel}`;
       const claudeCmd = ['claude', '--dangerously-skip-permissions', cmd.claudeFlags].filter(Boolean).join(' ');
-      const tabId = zellij.newTab(name, cmd.path, claudeCmd);
+      const tabId = zellij.newTab(name, path, claudeCmd);
       return `Session ${name} created (Tab ${tabId}).`;
     }
 
@@ -56,8 +91,16 @@ export async function execute(cmd, { zellij }) {
     case 'send': {
       const tab = findTab(cmd.kürzel, sessions);
       if (!tab) return `Session @${cmd.kürzel} not found. Available: ${sessions.map(s => '@' + s.kürzel).join(', ')}`;
+      const beforeScreen = zellij.dumpScreen(tab.name, 10);
       zellij.writeChars(tab.name, cmd.message);
-      return `Message sent to @${cmd.kürzel}.`;
+      // Brief pause to let the TUI process the input
+      await new Promise(r => setTimeout(r, 500));
+      const afterScreen = zellij.dumpScreen(tab.name, 10);
+      const accepted = afterScreen !== beforeScreen;
+      if (accepted) {
+        return `Message sent to @${cmd.kürzel}.`;
+      }
+      return `Message sent to @${cmd.kürzel}, but session may not have accepted it (screen unchanged). Check with \`last @${cmd.kürzel}\`.`;
     }
 
     default:
@@ -70,6 +113,17 @@ export function parseCommand(input) {
 
   if (trimmed === '/ls') {
     return { type: 'ls' };
+  }
+
+  // /open @kürzel (without path — workspace lookup)
+  const openKürzelOnly = trimmed.match(/^\/open\s+@(\S+)\s*$/);
+  if (openKürzelOnly) {
+    return {
+      type: 'open',
+      kürzel: openKürzelOnly[1],
+      path: null,
+      claudeFlags: '',
+    };
   }
 
   const newMatch = trimmed.match(/^\/open\s+(?:@(\S+)\s+)?(\S+)(?:\s+--\s+(.+))?$/);

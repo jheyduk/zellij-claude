@@ -39,6 +39,11 @@ export function writeChars(tabName, text) {
   _exec.run(['write', '13']);
 }
 
+export function listPanes() {
+  const raw = _exec.run(['list-panes', '--json']);
+  return JSON.parse(raw);
+}
+
 export function dumpScreen(tabName, lines = 5) {
   _exec.run(['go-to-tab-name', tabName]);
   const raw = _exec.run(['dump-screen']);

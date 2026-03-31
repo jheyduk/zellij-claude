@@ -29,6 +29,15 @@ describe('parseCommand', () => {
     });
   });
 
+  it('/open @kürzel without path (workspace lookup)', () => {
+    assert.deepEqual(parseCommand('/open @infra'), {
+      type: 'open',
+      kürzel: 'infra',
+      path: null,
+      claudeFlags: '',
+    });
+  });
+
   it('/open with extra claude flags', () => {
     assert.deepEqual(parseCommand('/open /some/path -- --model claude-3-5-haiku'), {
       type: 'open',
@@ -119,15 +128,20 @@ function makeTabs(...specs) {
 }
 
 describe('execute – ls', () => {
-  it('returns formatted list with (active) marker', async () => {
+  it('returns formatted list with status and (active) marker', async () => {
     const zellij = {
       listTabs: () => makeTabs(
         { kürzel: 'alpha', active: true, tabId: 0 },
         { kürzel: 'beta', active: false, tabId: 1 },
       ),
+      listPanes: () => [
+        { tab_name: '@alpha', is_plugin: false, is_suppressed: false, pane_command: 'claude --dangerously-skip-permissions', title: '\u2733 Claude Code' },
+        { tab_name: '@beta', is_plugin: false, is_suppressed: false, pane_command: 'claude --dangerously-skip-permissions', title: '\u2733 Claude Code' },
+      ],
     };
     const result = await execute({ type: 'ls' }, { zellij });
-    assert.equal(result, '@alpha (active)\n@beta');
+    assert.match(result, /@alpha\s+ready\s+\(active\)/);
+    assert.match(result, /@beta\s+ready/);
   });
 
   it('returns no-sessions message when list is empty', async () => {
@@ -142,9 +156,12 @@ describe('execute – ls', () => {
         { name: 'zsh', active: false, tabId: 0 },
         { name: '@proj', active: true, tabId: 1 },
       ],
+      listPanes: () => [
+        { tab_name: '@proj', is_plugin: false, is_suppressed: false, pane_command: 'claude --dangerously-skip-permissions', title: '\u2733 Claude Code' },
+      ],
     };
     const result = await execute({ type: 'ls' }, { zellij });
-    assert.equal(result, '@proj (active)');
+    assert.match(result, /@proj\s+ready\s+\(active\)/);
   });
 });
 
@@ -252,9 +269,11 @@ describe('execute – rename', () => {
 describe('execute – send', () => {
   it('calls writeChars with correct args and returns confirmation', async () => {
     let sentTo = null, sentMsg = null;
+    let callCount = 0;
     const zellij = {
       listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
       writeChars: (name, msg) => { sentTo = name; sentMsg = msg; },
+      dumpScreen: () => { callCount++; return callCount === 1 ? 'before' : 'after'; },
     };
     const result = await execute({ type: 'send', kürzel: 'foo', message: 'hello' }, { zellij });
     assert.equal(sentTo, '@foo');
@@ -351,6 +370,85 @@ describe('execute – open', () => {
     );
     // should not have trailing space or empty segment
     assert.ok(!capturedCmd.endsWith(' '), `Command should not end with space: "${capturedCmd}"`);
+  });
+});
+
+describe('execute – ls with status', () => {
+  it('shows status from pane info', async () => {
+    const zellij = {
+      listTabs: () => makeTabs(
+        { kürzel: 'main', active: true, tabId: 0 },
+        { kürzel: 'fish', active: false, tabId: 1 },
+      ),
+      listPanes: () => [
+        { tab_name: '@main', is_plugin: false, is_suppressed: false, pane_command: 'claude --dangerously-skip-permissions', title: '\u2733 Claude Code' },
+        { tab_name: '@fish', is_plugin: false, is_suppressed: false, pane_command: 'fish', title: '~/prj' },
+      ],
+    };
+    const result = await execute({ type: 'ls' }, { zellij });
+    assert.match(result, /@main\s+ready\s+\(active\)/);
+    assert.match(result, /@fish\s+shell \(fish\)/);
+  });
+
+  it('detects working status from spinner in title', async () => {
+    const zellij = {
+      listTabs: () => makeTabs({ kürzel: 'hub', active: false, tabId: 0 }),
+      listPanes: () => [
+        { tab_name: '@hub', is_plugin: false, is_suppressed: false, pane_command: 'claude --dangerously-skip-permissions', title: '\u2810 Implementing feature' },
+      ],
+    };
+    const result = await execute({ type: 'ls' }, { zellij });
+    assert.match(result, /@hub\s+working/);
+  });
+
+  it('falls back gracefully when listPanes is not available', async () => {
+    const zellij = {
+      listTabs: () => makeTabs({ kürzel: 'alpha', active: true, tabId: 0 }),
+    };
+    const result = await execute({ type: 'ls' }, { zellij });
+    assert.match(result, /@alpha\s+unknown/);
+  });
+});
+
+describe('execute – send with verification', () => {
+  it('reports acceptance when screen changes after send', async () => {
+    let callCount = 0;
+    const zellij = {
+      listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
+      writeChars: () => {},
+      dumpScreen: () => {
+        callCount++;
+        return callCount === 1 ? 'before' : 'after';
+      },
+    };
+    const result = await execute({ type: 'send', kürzel: 'foo', message: 'hi' }, { zellij });
+    assert.match(result, /Message sent to @foo\./);
+    assert.ok(!result.includes('may not have accepted'));
+  });
+
+  it('warns when screen does not change after send', async () => {
+    const zellij = {
+      listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
+      writeChars: () => {},
+      dumpScreen: () => 'same content',
+    };
+    const result = await execute({ type: 'send', kürzel: 'foo', message: 'hi' }, { zellij });
+    assert.match(result, /may not have accepted/);
+  });
+});
+
+describe('execute – open with workspace lookup', () => {
+  it('returns error when no workspace found and no path given', async () => {
+    const zellij = {
+      listTabs: () => [],
+      newTab: () => 1,
+    };
+    // kürzel that won't match any real directory
+    const result = await execute(
+      { type: 'open', kürzel: 'nonexistent_xyzzy_42', path: null, claudeFlags: '' },
+      { zellij },
+    );
+    assert.match(result, /No workspace found/);
   });
 });
 

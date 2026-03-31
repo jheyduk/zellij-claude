@@ -32,11 +32,11 @@ server.tool('zellij_send', 'Send a message to a session', {
 });
 
 server.tool('zellij_open', 'Open a new Claude Code session in a new tab', {
-  path: z.string().describe('Working directory for the new session'),
+  path: z.string().optional().describe('Working directory (auto-resolved from name if omitted)'),
   name: z.string().optional().describe('Session name (auto-derived from path if omitted)'),
   flags: z.string().optional().default('').describe('Extra claude CLI flags'),
 }, async ({ path, name, flags }) => {
-  return run({ type: 'open', kürzel: name || null, path, claudeFlags: flags });
+  return run({ type: 'open', kürzel: name || null, path: path || null, claudeFlags: flags });
 });
 
 server.tool('zellij_goto', 'Switch to a session tab', {

@@ -33,7 +33,7 @@ if (sub === 'mcp') {
   if (sub === 'send') {
     input = `@${args[1]?.replace(/^@/, '')} ${args.slice(2).join(' ')}`;
   } else if (sub === 'open') {
-    // Map: open [--name @X] <path> [-- flags] → /open [@X] <path> [-- flags]
+    // Map: open [--name @X] [path] [-- flags] → /open [@X] [path] [-- flags]
     const rest = args.slice(1);
     let name = null;
     let filtered = [];
@@ -41,7 +41,12 @@ if (sub === 'mcp') {
       if (rest[i] === '--name' && rest[i + 1]) { name = rest[++i].replace(/^@/, ''); }
       else { filtered.push(rest[i]); }
     }
-    input = name ? `/open @${name} ${filtered.join(' ')}` : `/open ${filtered.join(' ')}`;
+    if (name && filtered.length === 0) {
+      // open --name @X (no path) — workspace lookup
+      input = `/open @${name}`;
+    } else {
+      input = name ? `/open @${name} ${filtered.join(' ')}` : `/open ${filtered.join(' ')}`;
+    }
   } else {
     input = `/${args.join(' ')}`;
   }
