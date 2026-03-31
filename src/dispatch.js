@@ -6,10 +6,11 @@ import { resolveWorkspace } from './workspace.js';
 function deriveStatus(pane) {
   if (!pane) return 'unknown';
   const cmd = pane.pane_command || '';
+  const termCmd = pane.terminal_command || '';
   const title = pane.title || '';
 
   // Not a Claude session — show the process name
-  if (!cmd.includes('claude')) {
+  if (!cmd.includes('claude') && !termCmd.includes('claude')) {
     const proc = cmd.split('/').pop().split(/\s/)[0] || title.split(/\s/)[0] || 'shell';
     return `shell (${proc})`;
   }

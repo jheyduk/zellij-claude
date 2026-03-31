@@ -401,6 +401,17 @@ describe('execute – ls with status', () => {
     assert.match(result, /@hub\s+working/);
   });
 
+  it('detects claude via terminal_command when pane_command is an MCP subprocess', async () => {
+    const zellij = {
+      listTabs: () => makeTabs({ kürzel: 'hub', active: false, tabId: 0 }),
+      listPanes: () => [
+        { tab_name: '@hub', is_plugin: false, is_suppressed: false, pane_command: 'npm exec @playwright/mcp@latest', terminal_command: 'claude --dangerously-skip-permissions', title: '\u2733 Claude Code' },
+      ],
+    };
+    const result = await execute({ type: 'ls' }, { zellij });
+    assert.match(result, /@hub\s+ready/);
+  });
+
   it('falls back gracefully when listPanes is not available', async () => {
     const zellij = {
       listTabs: () => makeTabs({ kürzel: 'alpha', active: true, tabId: 0 }),
