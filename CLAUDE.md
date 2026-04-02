@@ -52,16 +52,8 @@ node --test test/dispatch.test.js  # run specific test file
 Config: `~/.config/zellij-claude/workspaces.json` with `{ "searchPaths": [...] }`.
 Defaults: `~/prj`, `~/projects`, `~/src`, `~/work`.
 
-## Telegram Callback Handling
+## Telegram Message Routing
 
-When a Telegram message matches `callback:allow:<name>` or `callback:deny:<name>`:
-- **allow** — send Enter keystroke: `zellij action go-to-tab-name @<name> && zellij action write 13`
-- **deny** — send ESC keystroke: `zellij action go-to-tab-name @<name> && zellij action write 27`
-
-## Voice Message Handling
-
-When a Telegram message has `attachment_kind="voice"`:
-1. Download via `download_attachment` with the `attachment_file_id`
-2. Transcribe: `bash hooks/transcribe.sh <file>`
-3. Reply with transcription prefixed by 🎤
-4. Process transcribed text as a normal message
+When a `<channel source="plugin:telegram:telegram">` message arrives, follow the
+routing rules in `skills/telegram-router/SKILL.md`. Read that file on first
+Telegram message in each session to load the full routing logic.
