@@ -25,11 +25,19 @@ function getLastResponse(kürzel) {
   } catch { return null; }
 }
 
+const MAX_TG_LENGTH = 4000; // Telegram limit is 4096, leave some margin
+
+function truncate(text, max) {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + '\n…(truncated)';
+}
+
 function notify(kürzel) {
   if (!kürzel) return; // Not a zellij-claude session, skip
   const response = getLastResponse(kürzel);
   if (response) {
-    send(`✅ @${kürzel}\n\n${response}`);
+    const header = `✅ @${kürzel}\n\n`;
+    send(header + truncate(response, MAX_TG_LENGTH - header.length));
   } else {
     send(`✅ @${kürzel} finished!`);
   }
