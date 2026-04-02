@@ -115,33 +115,43 @@ test('writeChars navigates to tab and writes text with newline', () => {
   assert.deepEqual(calls[2], ['write', '13']);
 });
 
-test('dumpScreen navigates to tab and returns all screen when short', () => {
+test('dumpScreen uses pane-id to avoid tab switch', () => {
   process.env.ZELLIJ_SESSION_NAME = 'test-session';
 
   const screenOutput = 'line1\nline2\nline3';
-  let callCount = 0;
+  const paneJson = JSON.stringify([
+    { tab_name: 'tab', id: 42, is_plugin: false, is_suppressed: false },
+  ]);
+  const calls = [];
 
   zellij._exec.run = (args) => {
-    callCount++;
-    if (callCount === 1) return ''; // goToTab result
-    return screenOutput;
+    calls.push(args);
+    if (args[0] === 'list-panes' && args[1] === '--json') return paneJson;
+    if (args[0] === 'dump-screen') return screenOutput;
+    return '';
   };
 
   const result = zellij.dumpScreen('tab', 5);
 
   assert.equal(result, screenOutput);
+  // Should use --pane-id, NOT go-to-tab-name
+  const dumpCall = calls.find(c => c[0] === 'dump-screen');
+  assert.deepEqual(dumpCall, ['dump-screen', '--pane-id', '42']);
+  assert.equal(calls.some(c => c[0] === 'go-to-tab-name'), false);
 });
 
 test('dumpScreen truncates output to last N lines when longer', () => {
   process.env.ZELLIJ_SESSION_NAME = 'test-session';
 
   const screenOutput = 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8';
-  let callCount = 0;
+  const paneJson = JSON.stringify([
+    { tab_name: 'tab', id: 7, is_plugin: false, is_suppressed: false },
+  ]);
 
   zellij._exec.run = (args) => {
-    callCount++;
-    if (callCount === 1) return ''; // goToTab result
-    return screenOutput;
+    if (args[0] === 'list-panes') return paneJson;
+    if (args[0] === 'dump-screen') return screenOutput;
+    return '';
   };
 
   const result = zellij.dumpScreen('tab', 3);
@@ -150,20 +160,26 @@ test('dumpScreen truncates output to last N lines when longer', () => {
   assert.equal(result, expected);
 });
 
-test('dumpScreen uses default line count of 5', () => {
+test('dumpScreen falls back to go-to-tab when pane not found', () => {
   process.env.ZELLIJ_SESSION_NAME = 'test-session';
 
   const screenOutput = 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10';
-  let callCount = 0;
+  const paneJson = JSON.stringify([
+    { tab_name: 'other-tab', id: 1, is_plugin: false, is_suppressed: false },
+  ]);
+  const calls = [];
 
   zellij._exec.run = (args) => {
-    callCount++;
-    if (callCount === 1) return ''; // goToTab result
-    return screenOutput;
+    calls.push(args);
+    if (args[0] === 'list-panes') return paneJson;
+    if (args[0] === 'dump-screen') return screenOutput;
+    return '';
   };
 
   const result = zellij.dumpScreen('tab');
 
   const expected = 'line6\nline7\nline8\nline9\nline10';
   assert.equal(result, expected);
+  // Should fall back to go-to-tab-name since pane wasn't found
+  assert.ok(calls.some(c => c[0] === 'go-to-tab-name'));
 });

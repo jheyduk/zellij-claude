@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// SessionStart hook: cache the zellij tab name for other hooks.
+// SessionStart hook: cache the zellij tab name for other hooks,
+// then reconcile stale tab files against actual Zellij tabs.
 // Input (stdin): { session_id, ... }
 
 const { execSync } = require('child_process');
 const { writeFileSync } = require('fs');
+const { reconcile } = require('./reconcile-tabs.cjs');
 
 let input = '';
 const timeout = setTimeout(() => process.exit(0), 3000);
@@ -28,6 +30,9 @@ process.stdin.on('end', () => {
         writeFileSync(`/tmp/zellij-claude-tab-${sessionId}`, tab.name.slice(1));
       }
     }
+
+    // Clean up stale tab files from old/dead sessions
+    reconcile();
   } catch {
     // Never crash Claude Code
   }

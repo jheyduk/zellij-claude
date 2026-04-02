@@ -26,13 +26,24 @@ function loadSearchPaths() {
 /**
  * Try to find a workspace directory matching the given kürzel.
  * Searches configured paths for a directory with a matching name.
+ * Also tries prefix-derived subdirectories: "fischer-argocd" checks
+ * searchPath/fischer/fischer-argocd (split on first hyphen).
  * Returns the absolute path or null.
  */
 export function resolveWorkspace(kürzel) {
   const searchPaths = loadSearchPaths();
+  const prefix = kürzel.includes('-') ? kürzel.split('-')[0] : null;
+
   for (const base of searchPaths) {
-    const candidate = join(base, kürzel);
-    if (existsSync(candidate)) return candidate;
+    // Direct match: searchPath/kürzel
+    const direct = join(base, kürzel);
+    if (existsSync(direct)) return direct;
+
+    // Prefix-derived: searchPath/prefix/kürzel
+    if (prefix) {
+      const nested = join(base, prefix, kürzel);
+      if (existsSync(nested)) return nested;
+    }
   }
   return null;
 }

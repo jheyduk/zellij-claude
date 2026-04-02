@@ -52,6 +52,12 @@ export async function execute(cmd, { zellij }) {
         path = resolved;
       }
 
+      // Non-absolute path — resolve via workspace lookup before using as-is
+      if (path && !path.startsWith('/')) {
+        const resolved = resolveWorkspace(path);
+        if (resolved) path = resolved;
+      }
+
       if (cmd.kürzel) {
         if (findTab(cmd.kürzel, sessions)) {
           return `Session @${cmd.kürzel} already running. Use \`goto @${cmd.kürzel}\` to switch.`;
