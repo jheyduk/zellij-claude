@@ -47,15 +47,19 @@ process.stdin.on('end', () => {
     const zellijSession = process.env.ZELLIJ_SESSION_NAME;
     const paneId = process.env.ZELLIJ_PANE_ID;
 
-    if (zellijSession && paneId !== undefined) {
+    if (zellijSession) {
+      // Find our tab by matching pane ID from list-panes (not list-tabs)
       const raw = execSync(
-        `zellij --session ${zellijSession} action list-tabs --json --state`,
+        `zellij --session ${zellijSession} action list-panes --json`,
         { encoding: 'utf8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
       );
-      const tabs = JSON.parse(raw);
-      const tab = tabs.find(t => String(t.tab_id) === paneId);
-      if (tab && tab.name.startsWith('@')) {
-        writeFileSync(`/tmp/zellij-claude-tab-${sessionId}`, tab.name.slice(1));
+      const panes = JSON.parse(raw);
+      // Match by ZELLIJ_PANE_ID if set, otherwise find the focused pane
+      const pane = paneId !== undefined
+        ? panes.find(p => String(p.id) === paneId && !p.is_plugin)
+        : panes.find(p => p.is_focused && !p.is_plugin);
+      if (pane && pane.tab_name && pane.tab_name.startsWith('@')) {
+        writeFileSync(`/tmp/zellij-claude-tab-${sessionId}`, pane.tab_name.slice(1));
       }
     }
 
