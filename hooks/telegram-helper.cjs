@@ -59,10 +59,12 @@ function send(text) {
 function sendWithButtons(text, buttons) {
   const chatId = getChatId();
   if (!chatId) return null;
+  // Support both flat array (single row) and nested arrays (multiple rows)
+  const keyboard = Array.isArray(buttons[0]) ? buttons : [buttons];
   return apiCall('sendMessage', {
     chat_id: chatId,
     text,
-    reply_markup: { inline_keyboard: [buttons] },
+    reply_markup: { inline_keyboard: keyboard },
   });
 }
 

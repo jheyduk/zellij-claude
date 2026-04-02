@@ -27,12 +27,17 @@ Check in this order:
 
 ### A. Callbacks — handle directly
 
-Messages matching `callback:allow:<name>` or `callback:deny:<name>`:
-
+**Permission callbacks** — `callback:allow:<name>` or `callback:deny:<name>`:
 - **allow** → `zellij action go-to-tab-name @<name> && zellij action write 13`
 - **deny** → `zellij action go-to-tab-name @<name> && zellij action write 27`
 
-React with ✅ or ❌ emoji.
+**Question callbacks** — `callback:ask:<name>:<number>`:
+Answer a multiple-choice question in a session. Send the number as keystrokes:
+```bash
+node bin/zellij-claude send @<name> "<number>"
+```
+
+React with ✅ emoji after handling any callback.
 
 ### B. zellij-claude Commands — handle directly
 
@@ -53,7 +58,8 @@ gets forwarded to @notes. This includes:
 - Explicit: "Inbox:", "Task:", "TODO:", "notiere", "merke dir", "Erinnerung"
 - Implicit: any general message without a clear command or session target
 
-Forward via: `node bin/zellij-claude send @notes "<the message>"`
+Forward the message as-is — @notes knows its own vault rules:
+`node bin/zellij-claude send @notes "<the message>"`
 
 If @notes is not running, reply: "@notes ist nicht aktiv. Starten mit: /open @notes"
 

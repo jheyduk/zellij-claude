@@ -61,6 +61,9 @@ process.stdin.on('end', () => {
     if (!kürzel) { process.exit(0); } // Not a zellij-claude session
     const message = data.message || 'Permission required';
     const toolInfo = loadToolDetails(data.session_id);
+    // Skip AskUserQuestion — already handled by ask-notify hook
+    if (toolInfo && toolInfo.tool_name === 'AskUserQuestion') { process.exit(0); }
+    if (message.includes('Claude Code needs your attention')) { process.exit(0); }
     sendNotification(`@${kürzel}`, message, toolInfo);
   } catch {
     // No valid session data, skip

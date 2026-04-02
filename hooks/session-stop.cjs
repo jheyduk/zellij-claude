@@ -32,8 +32,11 @@ function truncate(text, max) {
   return text.slice(0, max) + '\n…(truncated)';
 }
 
+const MAIN_SESSION = process.env.ZELLIJ_CLAUDE_MAIN || 'main';
+
 function notify(kürzel) {
   if (!kürzel) return; // Not a zellij-claude session, skip
+  if (kürzel === MAIN_SESSION) return; // @main talks via Telegram directly, skip
   const response = getLastResponse(kürzel);
   if (response) {
     const header = `✅ @${kürzel}\n\n`;
