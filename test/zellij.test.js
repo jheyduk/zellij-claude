@@ -131,7 +131,7 @@ test('dumpScreen uses pane-id to avoid tab switch', () => {
     return '';
   };
 
-  const result = zellij.dumpScreen('tab', 5);
+  const result = zellij.dumpScreen('tab', { lines: 5 });
 
   assert.equal(result, screenOutput);
   // Should use --pane-id, NOT go-to-tab-name
@@ -154,10 +154,53 @@ test('dumpScreen truncates output to last N lines when longer', () => {
     return '';
   };
 
-  const result = zellij.dumpScreen('tab', 3);
+  const result = zellij.dumpScreen('tab', { lines: 3 });
 
   const expected = 'line6\nline7\nline8';
   assert.equal(result, expected);
+});
+
+test('dumpScreen with full flag passes --full to zellij', () => {
+  process.env.ZELLIJ_SESSION_NAME = 'test-session';
+
+  const screenOutput = 'line1\nline2\nline3';
+  const paneJson = JSON.stringify([
+    { tab_name: 'tab', id: 5, is_plugin: false, is_suppressed: false },
+  ]);
+  const calls = [];
+
+  zellij._exec.run = (args) => {
+    calls.push(args);
+    if (args[0] === 'list-panes') return paneJson;
+    if (args[0] === 'dump-screen') return screenOutput;
+    return '';
+  };
+
+  const result = zellij.dumpScreen('tab', { full: true });
+
+  assert.equal(result, screenOutput);
+  const dumpCall = calls.find(c => c[0] === 'dump-screen');
+  assert.deepEqual(dumpCall, ['dump-screen', '--full', '--pane-id', '5']);
+});
+
+test('dumpScreen returns all content when no lines specified', () => {
+  process.env.ZELLIJ_SESSION_NAME = 'test-session';
+
+  const screenOutput = 'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10';
+  const paneJson = JSON.stringify([
+    { tab_name: 'tab', id: 1, is_plugin: false, is_suppressed: false },
+  ]);
+
+  zellij._exec.run = (args) => {
+    if (args[0] === 'list-panes') return paneJson;
+    if (args[0] === 'dump-screen') return screenOutput;
+    return '';
+  };
+
+  const result = zellij.dumpScreen('tab');
+
+  // Without lines param, returns everything
+  assert.equal(result, screenOutput);
 });
 
 test('dumpScreen falls back to go-to-tab when pane not found', () => {
@@ -176,7 +219,7 @@ test('dumpScreen falls back to go-to-tab when pane not found', () => {
     return '';
   };
 
-  const result = zellij.dumpScreen('tab');
+  const result = zellij.dumpScreen('tab', { lines: 5 });
 
   const expected = 'line6\nline7\nline8\nline9\nline10';
   assert.equal(result, expected);

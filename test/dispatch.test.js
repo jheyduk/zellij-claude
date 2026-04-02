@@ -202,24 +202,14 @@ describe('execute – last', () => {
     assert.match(result, /@bar/);
   });
 
-  it('passes max(50, lines*50) to dumpScreen', async () => {
-    let capturedLines;
+  it('passes full: true to dumpScreen', async () => {
+    let capturedOpts;
     const zellij = {
       listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
-      dumpScreen: (_name, lines) => { capturedLines = lines; return ''; },
+      dumpScreen: (_name, opts) => { capturedOpts = opts; return ''; },
     };
     await execute({ type: 'last', kürzel: 'foo', lines: 3 }, { zellij });
-    assert.equal(capturedLines, 150);
-  });
-
-  it('uses minimum of 50 lines for dumpScreen', async () => {
-    let capturedLines;
-    const zellij = {
-      listTabs: () => makeTabs({ kürzel: 'foo', active: true, tabId: 0 }),
-      dumpScreen: (_name, lines) => { capturedLines = lines; return ''; },
-    };
-    await execute({ type: 'last', kürzel: 'foo', lines: 1 }, { zellij });
-    assert.equal(capturedLines, 50);
+    assert.deepEqual(capturedOpts, { full: true });
   });
 });
 

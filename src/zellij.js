@@ -44,18 +44,21 @@ export function listPanes() {
   return JSON.parse(raw);
 }
 
-export function dumpScreen(tabName, lines = 5) {
+export function dumpScreen(tabName, { lines, full = false } = {}) {
   // Find the pane ID for this tab so we can dump without switching focus
   const panes = listPanes();
   const pane = panes.find(p => p.tab_name === tabName && !p.is_plugin && !p.is_suppressed);
+  const args = ['dump-screen'];
+  if (full) args.push('--full');
   let raw;
   if (pane) {
-    raw = _exec.run(['dump-screen', '--pane-id', String(pane.id)]);
+    raw = _exec.run([...args, '--pane-id', String(pane.id)]);
   } else {
     // Fallback: switch tab (old behavior)
     _exec.run(['go-to-tab-name', tabName]);
-    raw = _exec.run(['dump-screen']);
+    raw = _exec.run(args);
   }
+  if (!lines) return raw;
   const allLines = raw.split('\n');
   if (allLines.length <= lines) return raw;
   return allLines.slice(-lines).join('\n');

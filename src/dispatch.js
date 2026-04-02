@@ -75,9 +75,9 @@ export async function execute(cmd, { zellij }) {
     case 'last': {
       const tab = findTab(cmd.kürzel, sessions);
       if (!tab) return `Session @${cmd.kürzel} not found. Available: ${sessions.map(s => '@' + s.kürzel).join(', ')}`;
-      const raw = zellij.dumpScreen(tab.name, Math.max(50, cmd.lines * 50));
+      const raw = zellij.dumpScreen(tab.name, { full: true });
       const parsed = extractResponses(raw, cmd.lines);
-      const result = parsed ?? (raw ? raw.split('\n').slice(-cmd.lines).join('\n') : null);
+      const result = parsed ?? (raw ? raw.split('\n').slice(-50).join('\n') : null);
       return result ? sanitize(result) : 'No output available.';
     }
 
@@ -98,11 +98,11 @@ export async function execute(cmd, { zellij }) {
     case 'send': {
       const tab = findTab(cmd.kürzel, sessions);
       if (!tab) return `Session @${cmd.kürzel} not found. Available: ${sessions.map(s => '@' + s.kürzel).join(', ')}`;
-      const beforeScreen = zellij.dumpScreen(tab.name, 10);
+      const beforeScreen = zellij.dumpScreen(tab.name, { lines: 10 });
       zellij.writeChars(tab.name, cmd.message);
       // Brief pause to let the TUI process the input
       await new Promise(r => setTimeout(r, 500));
-      const afterScreen = zellij.dumpScreen(tab.name, 10);
+      const afterScreen = zellij.dumpScreen(tab.name, { lines: 10 });
       const accepted = afterScreen !== beforeScreen;
       if (accepted) {
         return `Message sent to @${cmd.kürzel}.`;
