@@ -1,11 +1,39 @@
 #!/usr/bin/env node
 // SessionStart hook: cache the zellij tab name for other hooks,
-// then reconcile stale tab files against actual Zellij tabs.
+// reconcile stale tab files, and enforce Telegram singleton.
 // Input (stdin): { session_id, ... }
 
 const { execSync } = require('child_process');
-const { writeFileSync } = require('fs');
+const { writeFileSync, readFileSync, unlinkSync } = require('fs');
 const { reconcile } = require('./reconcile-tabs.cjs');
+
+const TELEGRAM_PIDFILE = '/tmp/zellij-claude-telegram.pid';
+
+// Ensure only one Telegram MCP polling process runs at a time.
+// Kills older bun server.ts processes, keeps the newest (just spawned).
+function enforceTelegramSingleton() {
+  try {
+    const raw = execSync('pgrep -f "bun.*server.ts"', {
+      encoding: 'utf8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    const pids = raw.split('\n').map(Number).filter(Boolean);
+    if (pids.length <= 1) {
+      // 0 or 1 process — nothing to clean up, just record it
+      if (pids.length === 1) writeFileSync(TELEGRAM_PIDFILE, String(pids[0]));
+      return;
+    }
+    // Keep the newest (highest PID), kill the rest
+    pids.sort((a, b) => a - b);
+    const keep = pids.pop();
+    for (const pid of pids) {
+      try { process.kill(pid); } catch {}
+    }
+    writeFileSync(TELEGRAM_PIDFILE, String(keep));
+  } catch {
+    // pgrep found nothing or failed — clean up stale pidfile
+    try { unlinkSync(TELEGRAM_PIDFILE); } catch {}
+  }
+}
 
 let input = '';
 const timeout = setTimeout(() => process.exit(0), 3000);
@@ -33,6 +61,9 @@ process.stdin.on('end', () => {
 
     // Clean up stale tab files from old/dead sessions
     reconcile();
+
+    // Kill duplicate Telegram MCP processes
+    enforceTelegramSingleton();
   } catch {
     // Never crash Claude Code
   }
